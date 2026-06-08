@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# Pre-commit hook: Package Age Gate
+# Blocks commits if package.json or package-lock.json changed
+# and any dependency is newer than 14 days.
+#
+
+# Check if dependency files are staged
+DEPS_CHANGED=$(git diff --cached --name-only | grep -E '^(package\.json|package-lock\.json)$')
+
+if [ -n "$DEPS_CHANGED" ]; then
+  echo ""
+  echo "📦 Dependency files changed — running age gate..."
+  echo ""
+  node scripts/check-package-age.mjs
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "🚫 Commit blocked. Fix dependency versions before committing."
+    echo "   See: npm run audit:age"
+    echo ""
+    exit 1
+  fi
+fi
