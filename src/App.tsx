@@ -58,7 +58,41 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchWeather(defaultLat, defaultLon, "Chicago, IL");
+    const initWeather = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      let zip = urlParams.get('zip');
+      
+      if (!zip) {
+        const pathPart = window.location.pathname.replace(/\//g, '');
+        if (/^\d{5}$/.test(pathPart)) {
+          zip = pathPart;
+        }
+      }
+
+      if (zip) {
+        setLoading(true);
+        try {
+          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${zip}&count=1&language=en&format=json`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+              const result = data.results[0];
+              // Map the admin1 field to standard state abbreviations if needed, 
+              // but Open-Meteo provides full state name. We'll use Name, Admin1.
+              const locationStr = result.admin1 ? `${result.name}, ${result.admin1}` : result.name;
+              fetchWeather(result.latitude, result.longitude, locationStr);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn("Could not fetch coordinates for zip:", err);
+        }
+      }
+      
+      fetchWeather(defaultLat, defaultLon, "Chicago, IL");
+    };
+    
+    initWeather();
   }, []);
 
   const getUserLocation = () => {
