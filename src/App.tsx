@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { CloudRain, Sun, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar } from 'lucide-react';
+import { CloudRain, Sun, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings } from 'lucide-react';
+
+const defaultPrefs = {
+  minTemp: 60,
+  maxTemp: 90,
+  maxUv: 5,
+  maxHumidity: 70,
+  maxWindSpeed: 15,
+  allowRain: false
+};
 
 export default function App() {
   const [weather, setWeather] = useState(null);
@@ -9,6 +18,22 @@ export default function App() {
   const [dateOffset, setDateOffset] = useState(0); // 0 = Today, -1 = Yesterday, 1 = Tomorrow...
   const [showMowInfo, setShowMowInfo] = useState(false);
   const [coords, setCoords] = useState({ lat: 41.8781, lon: -87.6298 });
+  const [playPrefs, setPlayPrefs] = useState(() => {
+    const saved = localStorage.getItem('playPrefs');
+    if (saved) {
+      try {
+        return { ...defaultPrefs, ...JSON.parse(saved) };
+      } catch (e) {
+        return defaultPrefs;
+      }
+    }
+    return defaultPrefs;
+  });
+  const [showPlaySettings, setShowPlaySettings] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('playPrefs', JSON.stringify(playPrefs));
+  }, [playPrefs]);
   
   // Default coordinates (Chicago, IL 60603)
   const defaultLat = 41.8781;
@@ -19,7 +44,7 @@ export default function App() {
     setError(null);
     try {
       // Expanded API call: past_days=7, forecast_days=7 (14 days total).
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=precipitation,uv_index,temperature_2m&daily=uv_index_max,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weathercode&hourly=precipitation,uv_index,temperature_2m,precipitation_probability&past_days=7&forecast_days=7&timezone=auto&precipitation_unit=inch&temperature_unit=fahrenheit`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=precipitation,uv_index,temperature_2m&daily=uv_index_max,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weathercode&hourly=precipitation,uv_index,temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m&past_days=7&forecast_days=7&timezone=auto&precipitation_unit=inch&temperature_unit=fahrenheit&wind_speed_unit=mph`;
       const res = await fetch(url);
       
       if (!res.ok) throw new Error('Failed to fetch weather data');
@@ -31,7 +56,9 @@ export default function App() {
       let currentHourIdx = 0;
       let minDiff = Infinity;
       data.hourly.time.forEach((t, i) => {
-         const diff = Math.abs(new Date(t).getTime() - nowTime);
+         // Parse the API's local time string explicitly using its UTC offset
+         const epoch = new Date(t + 'Z').getTime() - (data.utc_offset_seconds * 1000);
+         const diff = Math.abs(epoch - nowTime);
          if (diff < minDiff) {
              minDiff = diff;
              currentHourIdx = i;
@@ -163,7 +190,9 @@ export default function App() {
                   uv: Number(rawHourly.uv_index[i]?.toFixed(1) || 0),
                   temp: Math.round(rawHourly.temperature_2m[i]),
                   precipProb: rawHourly.precipitation_probability[i] || 0,
-                  precipAmount: Number(rawHourly.precipitation[i] || 0)
+                  precipAmount: Number(rawHourly.precipitation[i] || 0),
+                  humidity: rawHourly.relative_humidity_2m[i] || 0,
+                  windSpeed: Math.round(rawHourly.wind_speed_10m[i] || 0)
               });
           }
       }
@@ -171,7 +200,13 @@ export default function App() {
 
     // Group valid kids play hours into digestible schedule blocks
     const playWindows = targetHourlyData.filter(h => 
-      h.uv < 4 && h.precipAmount === 0 && h.rawHour >= 6 && h.rawHour <= 19
+      h.uv <= playPrefs.maxUv && 
+      (playPrefs.allowRain || h.precipAmount === 0) &&
+      h.temp >= playPrefs.minTemp && 
+      h.temp <= playPrefs.maxTemp &&
+      h.humidity <= playPrefs.maxHumidity &&
+      h.windSpeed <= playPrefs.maxWindSpeed &&
+      h.rawHour >= 6 && h.rawHour <= 19
     );
 
     if (playWindows.length > 0) {
@@ -416,13 +451,70 @@ export default function App() {
 
               {/* Kids Outdoor Windows */}
               <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100 shadow-sm">
-                <div className="flex items-center gap-2 mb-1">
-                  <Smile className="w-5 h-5 text-emerald-500" />
-                  <p className="text-xs text-emerald-800 uppercase tracking-wider font-bold">Ideal Play Windows</p>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Smile className="w-5 h-5 text-emerald-500" />
+                    <p className="text-xs text-emerald-800 uppercase tracking-wider font-bold">Ideal Play Windows</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowPlaySettings(!showPlaySettings)}
+                    className="p-1.5 hover:bg-emerald-200/50 rounded-full transition-colors"
+                    title="Customize criteria"
+                  >
+                    <Settings className="w-4 h-4 text-emerald-700" />
+                  </button>
                 </div>
                 <p className="text-[10px] font-bold text-emerald-600/70 uppercase mb-4">
-                  6 AM to 7 PM • UV &lt; 4 • No Rain
+                  {playPrefs.minTemp}°-{playPrefs.maxTemp}° • UV ≤ {playPrefs.maxUv} • Hum ≤ {playPrefs.maxHumidity}% • Wind ≤ {playPrefs.maxWindSpeed}mph {playPrefs.allowRain ? '' : '• No Rain'}
                 </p>
+
+                {/* Settings Panel */}
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showPlaySettings ? 'max-h-[500px] opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
+                  <div className="p-4 bg-white/80 rounded-xl border border-emerald-200/50 shadow-inner space-y-4">
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                        <span>Temperature</span>
+                        <span>{playPrefs.minTemp}° - {playPrefs.maxTemp}°</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="range" min="30" max="80" value={playPrefs.minTemp} onChange={(e) => setPlayPrefs({...playPrefs, minTemp: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                        <input type="range" min="50" max="110" value={playPrefs.maxTemp} onChange={(e) => setPlayPrefs({...playPrefs, maxTemp: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                        <span>Max UV Index</span>
+                        <span>{playPrefs.maxUv}</span>
+                      </div>
+                      <input type="range" min="1" max="11" value={playPrefs.maxUv} onChange={(e) => setPlayPrefs({...playPrefs, maxUv: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                        <span>Max Humidity</span>
+                        <span>{playPrefs.maxHumidity}%</span>
+                      </div>
+                      <input type="range" min="0" max="100" value={playPrefs.maxHumidity} onChange={(e) => setPlayPrefs({...playPrefs, maxHumidity: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                        <span>Max Wind Speed</span>
+                        <span>{playPrefs.maxWindSpeed} mph</span>
+                      </div>
+                      <input type="range" min="0" max="40" value={playPrefs.maxWindSpeed} onChange={(e) => setPlayPrefs({...playPrefs, maxWindSpeed: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-emerald-100">
+                      <span className="text-xs font-bold text-emerald-900">Allow Rain</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={playPrefs.allowRain} onChange={(e) => setPlayPrefs({...playPrefs, allowRain: e.target.checked})} />
+                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
 
                 {groupedWindows.length > 0 ? (
                   <div className="space-y-2">
