@@ -507,11 +507,13 @@ export default function App() {
               {/* Unified 12-Hour Timeline */}
               <div className="bg-white dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm">
                 <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold mb-4">Hourly Detail (6 AM - 8 PM)</p>
-                <div className="flex gap-4 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
-                  {targetHourlyData.map((item, idx) => (
-                    <div key={idx} className="flex flex-col items-center shrink-0 space-y-2">
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{item.time}</span>
-                      <span className="text-lg font-bold text-slate-800 dark:text-slate-200">{item.temp}°</span>
+                <div className="flex gap-2 overflow-x-auto pb-3 -mx-2 px-2" style={{ scrollbarWidth: 'none' }}>
+                  {targetHourlyData.map((item, idx) => {
+                    const isCurrentHour = isToday && item.rawHour === new Date().getHours();
+                    return (
+                    <div key={idx} className={`flex flex-col items-center shrink-0 space-y-2 px-3 py-2 rounded-2xl ${isCurrentHour ? 'bg-blue-50 dark:bg-blue-900/40 ring-1 ring-blue-200 dark:ring-blue-800/60' : ''}`}>
+                      <span className={`text-xs whitespace-nowrap ${isCurrentHour ? 'text-blue-600 dark:text-blue-400 font-bold' : 'font-medium text-slate-500 dark:text-slate-400'}`}>{item.time}</span>
+                      <span className={`text-lg font-bold ${isCurrentHour ? 'text-blue-900 dark:text-blue-100' : 'text-slate-800 dark:text-slate-200'}`}>{item.temp}°</span>
                       <div className="flex items-center gap-0.5 text-blue-500 font-semibold mb-1">
                         <Droplets className="w-3 h-3" />
                         <span className="text-[10px]">{item.precipProb}%</span>
@@ -523,7 +525,7 @@ export default function App() {
                         {item.precipAmount > 0 ? item.precipAmount.toFixed(2) : '0'}"
                       </span>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
 
