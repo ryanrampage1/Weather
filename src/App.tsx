@@ -10,6 +10,79 @@ const defaultPrefs = {
   allowRain: false
 };
 
+const SingleSlider = ({ min, max, value, onChange, colorClass, suffix = "" }) => {
+  const percent = ((value - min) / (max - min)) * 100;
+  return (
+    <div className="relative w-full h-6 flex items-center">
+      <div className="absolute w-full h-2 bg-slate-200 rounded-full"></div>
+      <div className={`absolute h-2 rounded-full ${colorClass}`} style={{ width: `${percent}%` }}></div>
+      <div 
+        className="absolute h-5 w-9 bg-white border border-slate-200 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 pointer-events-none z-10"
+        style={{ left: `calc(${percent}% - ${percent * 0.36}px)` }}
+      >
+        {value}{suffix}
+      </div>
+      <input 
+        type="range" 
+        min={min} max={max} 
+        value={value} 
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="absolute w-full h-full opacity-0 cursor-pointer appearance-none z-20 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-9 [&::-webkit-slider-thumb]:h-5 [&::-moz-range-thumb]:w-9 [&::-moz-range-thumb]:h-5"
+      />
+    </div>
+  );
+};
+
+const DualSlider = ({ min, max, minValue, maxValue, onChangeMin, onChangeMax }) => {
+  const minPercent = ((minValue - min) / (max - min)) * 100;
+  const maxPercent = ((maxValue - min) / (max - min)) * 100;
+  
+  return (
+    <div className="relative w-full h-6 flex items-center">
+      <div className="absolute w-full h-2 bg-slate-200 rounded-full"></div>
+      <div className="absolute h-2 bg-blue-500 rounded-l-full" style={{ left: 0, width: `${minPercent}%` }}></div>
+      <div className="absolute h-2 bg-emerald-500" style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}></div>
+      <div className="absolute h-2 bg-red-500 rounded-r-full" style={{ left: `${maxPercent}%`, width: `${100 - maxPercent}%` }}></div>
+
+      <div 
+        className="absolute h-5 w-9 bg-white border border-slate-200 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 pointer-events-none z-10"
+        style={{ left: `calc(${minPercent}% - ${minPercent * 0.36}px)` }}
+      >
+        {minValue}°
+      </div>
+
+      <div 
+        className="absolute h-5 w-9 bg-white border border-slate-200 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 pointer-events-none z-10"
+        style={{ left: `calc(${maxPercent}% - ${maxPercent * 0.36}px)` }}
+      >
+        {maxValue}°
+      </div>
+
+      <input 
+        type="range" 
+        min={min} max={max} 
+        value={minValue} 
+        onChange={(e) => {
+          const val = Math.min(Number(e.target.value), maxValue - 1);
+          onChangeMin(val);
+        }}
+        className="absolute w-full h-full opacity-0 cursor-pointer appearance-none pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-9 [&::-webkit-slider-thumb]:h-5 [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-9 [&::-moz-range-thumb]:h-5 z-20"
+      />
+
+      <input 
+        type="range" 
+        min={min} max={max} 
+        value={maxValue} 
+        onChange={(e) => {
+          const val = Math.max(Number(e.target.value), minValue + 1);
+          onChangeMax(val);
+        }}
+        className="absolute w-full h-full opacity-0 cursor-pointer appearance-none pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-9 [&::-webkit-slider-thumb]:h-5 [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-9 [&::-moz-range-thumb]:h-5 z-20"
+      />
+    </div>
+  );
+};
+
 export default function App() {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -476,10 +549,13 @@ export default function App() {
                         <span>Temperature</span>
                         <span>{playPrefs.minTemp}° - {playPrefs.maxTemp}°</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <input type="range" min="30" max="80" value={playPrefs.minTemp} onChange={(e) => setPlayPrefs({...playPrefs, minTemp: Number(e.target.value)})} className="w-full accent-emerald-500" />
-                        <input type="range" min="50" max="110" value={playPrefs.maxTemp} onChange={(e) => setPlayPrefs({...playPrefs, maxTemp: Number(e.target.value)})} className="w-full accent-emerald-500" />
-                      </div>
+                      <DualSlider 
+                        min={30} max={110} 
+                        minValue={playPrefs.minTemp} 
+                        maxValue={playPrefs.maxTemp} 
+                        onChangeMin={(v) => setPlayPrefs({...playPrefs, minTemp: v})}
+                        onChangeMax={(v) => setPlayPrefs({...playPrefs, maxTemp: v})}
+                      />
                     </div>
                     
                     <div>
@@ -487,7 +563,12 @@ export default function App() {
                         <span>Max UV Index</span>
                         <span>{playPrefs.maxUv}</span>
                       </div>
-                      <input type="range" min="1" max="11" value={playPrefs.maxUv} onChange={(e) => setPlayPrefs({...playPrefs, maxUv: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                      <SingleSlider 
+                        min={1} max={11} 
+                        value={playPrefs.maxUv} 
+                        onChange={(v) => setPlayPrefs({...playPrefs, maxUv: v})} 
+                        colorClass="bg-emerald-500" 
+                      />
                     </div>
 
                     <div>
@@ -495,7 +576,13 @@ export default function App() {
                         <span>Max Humidity</span>
                         <span>{playPrefs.maxHumidity}%</span>
                       </div>
-                      <input type="range" min="0" max="100" value={playPrefs.maxHumidity} onChange={(e) => setPlayPrefs({...playPrefs, maxHumidity: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                      <SingleSlider 
+                        min={0} max={100} 
+                        value={playPrefs.maxHumidity} 
+                        onChange={(v) => setPlayPrefs({...playPrefs, maxHumidity: v})} 
+                        colorClass="bg-emerald-500" 
+                        suffix="%" 
+                      />
                     </div>
 
                     <div>
@@ -503,7 +590,12 @@ export default function App() {
                         <span>Max Wind Speed</span>
                         <span>{playPrefs.maxWindSpeed} mph</span>
                       </div>
-                      <input type="range" min="0" max="40" value={playPrefs.maxWindSpeed} onChange={(e) => setPlayPrefs({...playPrefs, maxWindSpeed: Number(e.target.value)})} className="w-full accent-emerald-500" />
+                      <SingleSlider 
+                        min={0} max={40} 
+                        value={playPrefs.maxWindSpeed} 
+                        onChange={(v) => setPlayPrefs({...playPrefs, maxWindSpeed: v})} 
+                        colorClass="bg-emerald-500" 
+                      />
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-emerald-100">
