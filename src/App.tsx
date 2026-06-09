@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CloudRain, Sun, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings } from 'lucide-react';
+import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings } from 'lucide-react';
 
 const defaultPrefs = {
   minTemp: 60,
@@ -14,10 +14,10 @@ const SingleSlider = ({ min, max, value, onChange, colorClass, suffix = "" }) =>
   const percent = ((value - min) / (max - min)) * 100;
   return (
     <div className="relative w-full h-6 flex items-center">
-      <div className="absolute w-full h-2 bg-slate-200 rounded-full"></div>
+      <div className="absolute w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
       <div className={`absolute h-2 rounded-full ${colorClass}`} style={{ width: `${percent}%` }}></div>
       <div 
-        className="absolute h-5 w-9 bg-white border border-slate-200 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 pointer-events-none z-10"
+        className="absolute h-5 w-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-300 pointer-events-none z-10"
         style={{ left: `calc(${percent}% - ${percent * 0.36}px)` }}
       >
         {value}{suffix}
@@ -39,20 +39,20 @@ const DualSlider = ({ min, max, minValue, maxValue, onChangeMin, onChangeMax }) 
   
   return (
     <div className="relative w-full h-6 flex items-center">
-      <div className="absolute w-full h-2 bg-slate-200 rounded-full"></div>
+      <div className="absolute w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
       <div className="absolute h-2 bg-blue-500 rounded-l-full" style={{ left: 0, width: `${minPercent}%` }}></div>
       <div className="absolute h-2 bg-emerald-500" style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}></div>
       <div className="absolute h-2 bg-red-500 rounded-r-full" style={{ left: `${maxPercent}%`, width: `${100 - maxPercent}%` }}></div>
 
       <div 
-        className="absolute h-5 w-9 bg-white border border-slate-200 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 pointer-events-none z-10"
+        className="absolute h-5 w-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-300 pointer-events-none z-10"
         style={{ left: `calc(${minPercent}% - ${minPercent * 0.36}px)` }}
       >
         {minValue}°
       </div>
 
       <div 
-        className="absolute h-5 w-9 bg-white border border-slate-200 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 pointer-events-none z-10"
+        className="absolute h-5 w-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-sm rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-300 pointer-events-none z-10"
         style={{ left: `calc(${maxPercent}% - ${maxPercent * 0.36}px)` }}
       >
         {maxValue}°
@@ -91,6 +91,24 @@ export default function App() {
   const [dateOffset, setDateOffset] = useState(0); // 0 = Today, -1 = Yesterday, 1 = Tomorrow...
   const [showMowInfo, setShowMowInfo] = useState(false);
   const [coords, setCoords] = useState({ lat: 41.8781, lon: -87.6298 });
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('darkMode');
+      if (saved !== null) return JSON.parse(saved);
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', JSON.stringify(isDark));
+  }, [isDark]);
+
   const [playPrefs, setPlayPrefs] = useState(() => {
     const saved = localStorage.getItem('playPrefs');
     if (saved) {
@@ -216,11 +234,11 @@ export default function App() {
   };
 
   const getUvSeverity = (uv) => {
-    if (uv <= 2) return { text: "Low", color: "text-green-600", bg: "bg-green-100" };
-    if (uv <= 5) return { text: "Moderate", color: "text-yellow-600", bg: "bg-yellow-100" };
-    if (uv <= 7) return { text: "High", color: "text-orange-600", bg: "bg-orange-100" };
-    if (uv <= 10) return { text: "Very High", color: "text-red-600", bg: "bg-red-100" };
-    return { text: "Extreme", color: "text-purple-600", bg: "bg-purple-100" };
+    if (uv <= 2) return { text: "Low", color: "text-green-600 dark:text-green-400", bg: "bg-green-100 dark:bg-green-900/40" };
+    if (uv <= 5) return { text: "Moderate", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-100 dark:bg-yellow-900/40" };
+    if (uv <= 7) return { text: "High", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/40" };
+    if (uv <= 10) return { text: "Very High", color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/40" };
+    return { text: "Extreme", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-900/40" };
   };
 
   // --- Rendering Logic based on dateOffset ---
@@ -339,11 +357,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans text-slate-800">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 transition-colors duration-300">
         
         {/* Header Block */}
-        <div className="bg-slate-900 text-white px-5 py-4 pb-5">
+        <div className="bg-slate-900 dark:bg-slate-950 text-white px-5 py-4 pb-5 border-b border-transparent dark:border-slate-800">
           {/* Top Control Row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 pr-4 overflow-hidden">
@@ -351,6 +369,13 @@ export default function App() {
               <h1 className="text-base font-bold tracking-tight truncate">{locationName}</h1>
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              <button 
+                onClick={() => setIsDark(!isDark)}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                title="Toggle Dark Mode"
+              >
+                {isDark ? <Sun className="w-4 h-4 text-white" /> : <Moon className="w-4 h-4 text-white" />}
+              </button>
               <button 
                 onClick={() => fetchWeather(defaultLat, defaultLon, locationName)}
                 disabled={loading}
@@ -413,14 +438,14 @@ export default function App() {
         {/* Content */}
         <div className="p-6">
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-start gap-3 text-sm">
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl flex items-start gap-3 text-sm">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <p>{error}</p>
             </div>
           )}
 
           {loading && !weather ? (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-slate-500">
               <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
               <p>Fetching local radar and sensors...</p>
             </div>
@@ -430,63 +455,63 @@ export default function App() {
               {/* Daily / Current Summary Grid */}
               <div className="grid grid-cols-3 gap-3">
                 {/* Temp Box */}
-                <div className="bg-orange-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-orange-100 text-center shadow-sm">
-                  <Thermometer className="w-5 h-5 text-orange-500 mb-1" />
-                  <span className="text-3xl font-black text-orange-900 tracking-tighter">
+                <div className="bg-orange-50 dark:bg-orange-950/30 rounded-2xl p-4 flex flex-col items-center justify-center border border-orange-100 dark:border-orange-900/30 text-center shadow-sm">
+                  <Thermometer className="w-5 h-5 text-orange-500 dark:text-orange-400 mb-1" />
+                  <span className="text-3xl font-black text-orange-900 dark:text-orange-100 tracking-tighter">
                     {isToday ? Math.round(weather.raw.current.temperature_2m) : Math.round(weather.raw.daily.temperature_2m_max[dailyIndex])}°
                   </span>
-                  <span className="text-[10px] font-bold uppercase mt-1 text-orange-600">
+                  <span className="text-[10px] font-bold uppercase mt-1 text-orange-600 dark:text-orange-400">
                     {isToday ? 'Current' : 'Daily High'}
                   </span>
-                  <span className="text-[10px] font-bold text-orange-700/60 uppercase mt-0.5 whitespace-nowrap">
+                  <span className="text-[10px] font-bold text-orange-700/60 dark:text-orange-400/60 uppercase mt-0.5 whitespace-nowrap">
                     H: {Math.round(weather.raw.daily.temperature_2m_max[dailyIndex])}° L: {Math.round(weather.raw.daily.temperature_2m_min[dailyIndex])}°
                   </span>
                 </div>
 
                 {/* Rain Box */}
-                <div className="bg-blue-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-blue-100 text-center shadow-sm">
-                  <CloudRain className="w-5 h-5 text-blue-500 mb-1" />
-                  <span className="text-2xl font-black text-blue-900 tracking-tighter">
+                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-4 flex flex-col items-center justify-center border border-blue-100 dark:border-blue-900/30 text-center shadow-sm">
+                  <CloudRain className="w-5 h-5 text-blue-500 dark:text-blue-400 mb-1" />
+                  <span className="text-2xl font-black text-blue-900 dark:text-blue-100 tracking-tighter">
                     {isToday ? weather.rainPast24 : weather.raw.daily.precipitation_sum[dailyIndex].toFixed(2)}"
                   </span>
-                  <span className="text-[10px] font-bold uppercase mt-1 text-blue-600">
+                  <span className="text-[10px] font-bold uppercase mt-1 text-blue-600 dark:text-blue-400">
                     {isToday ? 'Past 24h' : 'Total Rain'}
                   </span>
                   {isToday ? (
-                    <div className="mt-0.5 flex flex-col gap-0 text-[9px] font-bold text-blue-700/60 uppercase whitespace-nowrap">
+                    <div className="mt-0.5 flex flex-col gap-0 text-[9px] font-bold text-blue-700/60 dark:text-blue-400/60 uppercase whitespace-nowrap">
                       <span>Current: {weather.raw.current.precipitation}"</span>
                       <span>Next 12h: {weather.rainNext12}"</span>
                     </div>
                   ) : (
-                    <div className="mt-0.5 flex flex-col gap-0 text-[9px] font-bold text-blue-700/60 uppercase whitespace-nowrap">
+                    <div className="mt-0.5 flex flex-col gap-0 text-[9px] font-bold text-blue-700/60 dark:text-blue-400/60 uppercase whitespace-nowrap">
                       <span>Max Prob: {weather.raw.daily.precipitation_probability_max[dailyIndex]}%</span>
                     </div>
                   )}
                 </div>
 
                 {/* UV Box */}
-                <div className="bg-amber-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-amber-100 text-center shadow-sm">
-                  <Sun className="w-5 h-5 text-amber-500 mb-1" />
-                  <span className="text-2xl font-black text-amber-900 tracking-tighter">
+                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl p-4 flex flex-col items-center justify-center border border-amber-100 dark:border-amber-900/30 text-center shadow-sm">
+                  <Sun className="w-5 h-5 text-amber-500 dark:text-amber-400 mb-1" />
+                  <span className="text-2xl font-black text-amber-900 dark:text-amber-100 tracking-tighter">
                     {isToday ? weather.raw.current.uv_index : weather.raw.daily.uv_index_max[dailyIndex]}
                   </span>
                   <span className={`text-[10px] font-bold uppercase mt-1 ${getUvSeverity(isToday ? weather.raw.current.uv_index : weather.raw.daily.uv_index_max[dailyIndex]).color}`}>
                     {getUvSeverity(isToday ? weather.raw.current.uv_index : weather.raw.daily.uv_index_max[dailyIndex]).text}
                   </span>
-                  <span className="text-[10px] font-bold text-amber-700/60 uppercase mt-0.5">
+                  <span className="text-[10px] font-bold text-amber-700/60 dark:text-amber-400/60 uppercase mt-0.5">
                     Peak: {weather.raw.daily.uv_index_max[dailyIndex]}
                   </span>
                 </div>
               </div>
 
               {/* Unified 12-Hour Timeline */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-4">Hourly Detail (6 AM - 8 PM)</p>
+              <div className="bg-white dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm">
+                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold mb-4">Hourly Detail (6 AM - 8 PM)</p>
                 <div className="flex gap-4 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
                   {targetHourlyData.map((item, idx) => (
                     <div key={idx} className="flex flex-col items-center shrink-0 space-y-2">
-                      <span className="text-xs font-medium text-slate-500 whitespace-nowrap">{item.time}</span>
-                      <span className="text-lg font-bold text-slate-800">{item.temp}°</span>
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{item.time}</span>
+                      <span className="text-lg font-bold text-slate-800 dark:text-slate-200">{item.temp}°</span>
                       <div className="flex items-center gap-0.5 text-blue-500 font-semibold mb-1">
                         <Droplets className="w-3 h-3" />
                         <span className="text-[10px]">{item.precipProb}%</span>
@@ -494,7 +519,7 @@ export default function App() {
                       <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getUvSeverity(item.uv).bg} ${getUvSeverity(item.uv).color}`}>
                         UV {item.uv}
                       </div>
-                      <span className={`text-[10px] font-bold mt-1 ${item.precipAmount > 0 ? 'text-blue-600' : 'text-slate-300'}`}>
+                      <span className={`text-[10px] font-bold mt-1 ${item.precipAmount > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-300 dark:text-slate-600'}`}>
                         {item.precipAmount > 0 ? item.precipAmount.toFixed(2) : '0'}"
                       </span>
                     </div>
@@ -504,12 +529,12 @@ export default function App() {
 
               {/* Live Radar (Only visible when viewing Today) */}
               {isToday && (
-                <div className="bg-white rounded-2xl p-1 border border-slate-100 shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-50">
-                    <Radar className="w-4 h-4 text-blue-500" />
-                    <p className="text-xs text-slate-800 uppercase tracking-wider font-bold">Live Doppler</p>
+                <div className="bg-white dark:bg-slate-900/50 rounded-2xl p-1 border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-50 dark:border-slate-800/50">
+                    <Radar className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                    <p className="text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider font-bold">Live Doppler</p>
                   </div>
-                  <div className="h-64 w-full bg-slate-100 relative pointer-events-auto">
+                  <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 relative pointer-events-auto">
                      <iframe
                         width="100%"
                         height="100%"
@@ -523,29 +548,29 @@ export default function App() {
               )}
 
               {/* Kids Outdoor Windows */}
-              <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100 shadow-sm">
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl p-5 border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     <Smile className="w-5 h-5 text-emerald-500" />
-                    <p className="text-xs text-emerald-800 uppercase tracking-wider font-bold">Ideal Play Windows</p>
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300 uppercase tracking-wider font-bold">Ideal Play Windows</p>
                   </div>
                   <button 
                     onClick={() => setShowPlaySettings(!showPlaySettings)}
                     className="p-1.5 hover:bg-emerald-200/50 rounded-full transition-colors"
                     title="Customize criteria"
                   >
-                    <Settings className="w-4 h-4 text-emerald-700" />
+                    <Settings className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                   </button>
                 </div>
-                <p className="text-[10px] font-bold text-emerald-600/70 uppercase mb-4">
+                <p className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 uppercase mb-4">
                   {playPrefs.minTemp}°-{playPrefs.maxTemp}° • UV ≤ {playPrefs.maxUv} • Hum ≤ {playPrefs.maxHumidity}% • Wind ≤ {playPrefs.maxWindSpeed}mph {playPrefs.allowRain ? '' : '• No Rain'}
                 </p>
 
                 {/* Settings Panel */}
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showPlaySettings ? 'max-h-[500px] opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
-                  <div className="p-4 bg-white/80 rounded-xl border border-emerald-200/50 shadow-inner space-y-4">
+                  <div className="p-4 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 shadow-inner space-y-4">
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 dark:text-emerald-100 dark:text-emerald-100 mb-1">
                         <span>Temperature</span>
                         <span>{playPrefs.minTemp}° - {playPrefs.maxTemp}°</span>
                       </div>
@@ -559,7 +584,7 @@ export default function App() {
                     </div>
                     
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 dark:text-emerald-100 dark:text-emerald-100 mb-1">
                         <span>Max UV Index</span>
                         <span>{playPrefs.maxUv}</span>
                       </div>
@@ -572,7 +597,7 @@ export default function App() {
                     </div>
 
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 dark:text-emerald-100 dark:text-emerald-100 mb-1">
                         <span>Max Humidity</span>
                         <span>{playPrefs.maxHumidity}%</span>
                       </div>
@@ -586,7 +611,7 @@ export default function App() {
                     </div>
 
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-emerald-900 mb-1">
+                      <div className="flex justify-between text-xs font-bold text-emerald-900 dark:text-emerald-100 dark:text-emerald-100 mb-1">
                         <span>Max Wind Speed</span>
                         <span>{playPrefs.maxWindSpeed} mph</span>
                       </div>
@@ -598,11 +623,11 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-emerald-100">
-                      <span className="text-xs font-bold text-emerald-900">Allow Rain</span>
+                    <div className="flex items-center justify-between pt-2 border-t border-emerald-100 dark:border-emerald-800/50">
+                      <span className="text-xs font-bold text-emerald-900 dark:text-emerald-100">Allow Rain</span>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" checked={playPrefs.allowRain} onChange={(e) => setPlayPrefs({...playPrefs, allowRain: e.target.checked})} />
-                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 dark:peer-checked:bg-emerald-600"></div>
                       </label>
                     </div>
                   </div>
@@ -621,28 +646,28 @@ export default function App() {
                       const avgPrecipProb = Math.round(group.reduce((sum, h) => sum + h.precipProb, 0) / group.length);
 
                       return (
-                        <div key={idx} className="bg-white rounded-xl p-3 border border-emerald-200/60 shadow-sm flex items-center justify-between">
+                        <div key={idx} className="bg-white dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-1.5 h-8 bg-emerald-400 rounded-full"></div>
+                            <div className="w-1.5 h-8 bg-emerald-400 dark:bg-emerald-500 rounded-full"></div>
                             <div>
-                              <h3 className="text-sm font-bold text-emerald-950">{timeLabel}</h3>
-                              <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-wide">
+                              <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-100">{timeLabel}</h3>
+                              <p className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wide">
                                 {group.length} {group.length === 1 ? 'Hour' : 'Hours'}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-4 shrink-0">
                             <div className="flex flex-col justify-center items-center">
-                              <span className="text-base font-black text-emerald-800 leading-none">{avgPrecipProb}%</span>
-                              <span className="text-[9px] font-bold text-emerald-500 uppercase mt-0.5">Rain</span>
+                              <span className="text-base font-black text-emerald-800 dark:text-emerald-200 leading-none">{avgPrecipProb}%</span>
+                              <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400 uppercase mt-0.5">Rain</span>
                             </div>
                             <div className="flex flex-col justify-center items-center">
-                              <span className="text-base font-black text-emerald-800 leading-none">{avgUv}</span>
-                              <span className="text-[9px] font-bold text-emerald-500 uppercase mt-0.5">UV</span>
+                              <span className="text-base font-black text-emerald-800 dark:text-emerald-200 leading-none">{avgUv}</span>
+                              <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400 uppercase mt-0.5">UV</span>
                             </div>
                             <div className="flex flex-col justify-center items-center">
-                              <span className="text-base font-black text-emerald-800 leading-none">{avgTemp}°</span>
-                              <span className="text-[9px] font-bold text-emerald-500 uppercase mt-0.5">Temp</span>
+                              <span className="text-base font-black text-emerald-800 dark:text-emerald-200 leading-none">{avgTemp}°</span>
+                              <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400 uppercase mt-0.5">Temp</span>
                             </div>
                           </div>
                         </div>
@@ -650,35 +675,35 @@ export default function App() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white/50 rounded-xl p-4 border border-emerald-100 text-center text-sm font-medium text-emerald-800/70">
+                  <div className="bg-white/50 dark:bg-emerald-900/10 rounded-xl p-4 border border-emerald-100 dark:border-emerald-900/30 text-center text-sm font-medium text-emerald-800/70 dark:text-emerald-400/70">
                     No ideal outdoor windows matching criteria for this day. Time for indoor activities!
                   </div>
                 )}
               </div>
 
               {/* Lawn Care Planner (Weekly Context) */}
-              <div className="bg-lime-50 rounded-2xl p-5 border border-lime-100 shadow-sm">
+              <div className="bg-lime-50 dark:bg-lime-950/20 rounded-2xl p-5 border border-lime-100 dark:border-lime-900/30 shadow-sm">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Leaf className="w-5 h-5 text-lime-600" />
-                    <p className="text-xs text-lime-900 uppercase tracking-wider font-bold">Lawn Care Planner</p>
+                    <Leaf className="w-5 h-5 text-lime-600 dark:text-lime-400" />
+                    <p className="text-xs text-lime-900 dark:text-lime-300 uppercase tracking-wider font-bold">Lawn Care Planner</p>
                   </div>
                   <button 
                     onClick={() => setShowMowInfo(!showMowInfo)}
                     className="p-1.5 hover:bg-lime-200/50 rounded-full transition-colors"
                     title="View algorithm criteria"
                   >
-                    {showMowInfo ? <ChevronUp className="w-4 h-4 text-lime-700" /> : <ChevronDown className="w-4 h-4 text-lime-700" />}
+                    {showMowInfo ? <ChevronUp className="w-4 h-4 text-lime-700 dark:text-lime-400" /> : <ChevronDown className="w-4 h-4 text-lime-700 dark:text-lime-400" />}
                   </button>
                 </div>
-                <p className="text-[10px] font-bold text-lime-700/70 uppercase mb-4">
+                <p className="text-[10px] font-bold text-lime-700/70 dark:text-lime-400/70 uppercase mb-4">
                   Top upcoming days to mow
                 </p>
 
                 {/* Expanding Info Box */}
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showMowInfo ? 'max-h-48 opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
-                  <div className="p-3 bg-lime-100/50 rounded-xl border border-lime-200/50 text-xs text-lime-900/80 space-y-1">
-                    <p className="font-bold text-lime-900 mb-1 border-b border-lime-200 pb-1">Scoring Criteria:</p>
+                  <div className="p-3 bg-lime-100/50 dark:bg-lime-900/30 rounded-xl border border-lime-200/50 dark:border-lime-800/50 text-xs text-lime-900/80 dark:text-lime-300/80 space-y-1">
+                    <p className="font-bold text-lime-900 dark:text-lime-200 mb-1 border-b border-lime-200 dark:border-lime-800/50 pb-1">Scoring Criteria:</p>
                     <ul className="list-disc pl-4 space-y-1">
                       <li><strong>Dry Rule:</strong> Must have &lt; 0.05" of rain.</li>
                       <li><strong>Soggy Turf:</strong> Penalized if it rained &gt; 0.15" the day prior.</li>
@@ -691,27 +716,27 @@ export default function App() {
                 {bestMowingDays.length > 0 ? (
                   <div className="space-y-2">
                     {bestMowingDays.map((day, idx) => (
-                      <div key={idx} className="bg-white rounded-xl p-3 border border-lime-200/60 shadow-sm flex items-center justify-between">
+                      <div key={idx} className="bg-white dark:bg-lime-900/20 rounded-xl p-3 border border-lime-200/60 dark:border-lime-800/40 shadow-sm flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${idx === 0 ? 'bg-lime-500 text-white shadow-sm' : 'bg-lime-100 text-lime-700'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${idx === 0 ? 'bg-lime-500 text-white shadow-sm' : 'bg-lime-100 dark:bg-lime-900/50 text-lime-700 dark:text-lime-300'}`}>
                             #{idx + 1}
                           </div>
                           <div>
-                            <h3 className="text-sm font-bold text-lime-950">{day.dayName}</h3>
-                            <p className="text-[10px] font-bold text-lime-600/70 uppercase tracking-wide">
+                            <h3 className="text-sm font-bold text-lime-950 dark:text-lime-100">{day.dayName}</h3>
+                            <p className="text-[10px] font-bold text-lime-600/70 dark:text-lime-400/70 uppercase tracking-wide">
                               {day.tip}
                             </p>
                           </div>
                         </div>
                         <div className="flex flex-col justify-center items-end">
-                          <span className="text-base font-black text-lime-800 leading-none">{Math.round(day.maxTemp)}°</span>
-                          <span className="text-[9px] font-bold text-lime-500 uppercase mt-0.5">High</span>
+                          <span className="text-base font-black text-lime-800 dark:text-lime-200 leading-none">{Math.round(day.maxTemp)}°</span>
+                          <span className="text-[9px] font-bold text-lime-500 dark:text-lime-400 uppercase mt-0.5">High</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white/50 rounded-xl p-4 border border-lime-100 text-center text-sm font-medium text-lime-800/70">
+                  <div className="bg-white/50 dark:bg-lime-900/10 rounded-xl p-4 border border-lime-100 dark:border-lime-900/30 text-center text-sm font-medium text-lime-800/70 dark:text-lime-400/70">
                     No ideal mowing days in the next week due to rain. Let it grow!
                   </div>
                 )}
@@ -724,7 +749,7 @@ export default function App() {
       </div>
 
       {/* Sources Footer */}
-      <div className="mt-8 text-center text-xs text-slate-400">
+      <div className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500">
         <p>
           Data powered by{' '}
           <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="font-medium hover:text-slate-600 transition-colors underline decoration-slate-300 underline-offset-2">
