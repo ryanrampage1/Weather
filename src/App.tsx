@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings } from 'lucide-react';
+import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings, Sprout } from 'lucide-react';
 
 const defaultPrefs = {
   minTemp: 60,
@@ -90,6 +90,7 @@ export default function App() {
   const [locationName, setLocationName] = useState("Chicago, IL");
   const [dateOffset, setDateOffset] = useState(0); // 0 = Today, -1 = Yesterday, 1 = Tomorrow...
   const [showMowInfo, setShowMowInfo] = useState(false);
+  const [showFertilizerInfo, setShowFertilizerInfo] = useState(false);
   const [coords, setCoords] = useState({ lat: 41.8781, lon: -87.6298 });
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -250,6 +251,7 @@ export default function App() {
   let targetHourlyData = [];
   let groupedWindows = [];
   let bestMowingDays = [];
+  let bestFertilizerDays = [];
 
   if (weather && weather.raw.daily.time[dailyIndex]) {
     const rawDaily = weather.raw.daily;
@@ -312,6 +314,56 @@ export default function App() {
       }
       groupedWindows.push(currentGroup);
     }
+
+    // --- Fertilizer Algorithm (Looks at Next 7 Days) ---
+    for (let i = 7; i <= 13; i++) {
+      const rainToday = rawDaily.precipitation_sum[i];
+      const rainTomorrow = rawDaily.precipitation_sum[i + 1] || 0;
+      const maxTemp = rawDaily.temperature_2m_max[i];
+      const dateStr = rawDaily.time[i];
+      
+      const [y, m, d] = dateStr.split('-');
+      let dayName = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long' });
+      if (i === 7) dayName = "Today";
+      if (i === 8) dayName = "Tomorrow";
+
+      let score = 10;
+      let tip = "Great day to fertilize";
+      
+      const rain48h = rainToday + rainTomorrow;
+
+      if (rain48h > 1.0) {
+        score -= 5;
+        tip = "Heavy rain expected (washout risk)";
+      } else if (rain48h === 0) {
+        score -= 3;
+        tip = "No rain expected (must hand water)";
+      } else if (rainToday > 0.5) {
+        score -= 2;
+        tip = "Moderate rain (potential runoff)";
+      } else if (rain48h > 0.1 && rain48h <= 0.5) {
+        tip = "Perfect light rain to water in";
+        score += 1;
+      }
+
+      if (maxTemp > 85) {
+        score -= 4;
+        tip = "Too hot (burn risk)";
+      } else if (maxTemp < 50) {
+        score -= 2;
+        tip = "Too cold for absorption";
+      }
+
+      if (score > 3) {
+        bestFertilizerDays.push({ dayName, maxTemp, tip, score, dateStr, rain48h });
+      }
+    }
+
+    bestFertilizerDays.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.dateStr.localeCompare(b.dateStr);
+    });
+    bestFertilizerDays = bestFertilizerDays.slice(0, 3);
 
     // --- Mowing Algorithm (Looks at Next 7 Days regardless of selected date) ---
     for (let i = 7; i <= 13; i++) {
@@ -740,6 +792,67 @@ export default function App() {
                 ) : (
                   <div className="bg-white/50 dark:bg-lime-900/10 rounded-xl p-4 border border-lime-100 dark:border-lime-900/30 text-center text-sm font-medium text-lime-800/70 dark:text-lime-400/70">
                     No ideal mowing days in the next week due to rain. Let it grow!
+                  </div>
+                )}
+              </div>
+
+              {/* Fertilizer Planner */}
+              <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-5 border border-amber-100 dark:border-amber-900/30 shadow-sm">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Sprout className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    <p className="text-xs text-amber-900 dark:text-amber-300 uppercase tracking-wider font-bold">Fertilizer Planner</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowFertilizerInfo(!showFertilizerInfo)}
+                    className="p-1.5 hover:bg-amber-200/50 rounded-full transition-colors"
+                    title="View algorithm criteria"
+                  >
+                    {showFertilizerInfo ? <ChevronUp className="w-4 h-4 text-amber-700 dark:text-amber-400" /> : <ChevronDown className="w-4 h-4 text-amber-700 dark:text-amber-400" />}
+                  </button>
+                </div>
+                <p className="text-[10px] font-bold text-amber-700/70 dark:text-amber-400/70 uppercase mb-4">
+                  Top upcoming days to fertilize
+                </p>
+
+                {/* Expanding Info Box */}
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showFertilizerInfo ? 'max-h-48 opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
+                  <div className="p-3 bg-amber-100/50 dark:bg-amber-900/30 rounded-xl border border-amber-200/50 dark:border-amber-800/50 text-xs text-amber-900/80 dark:text-amber-300/80 space-y-1">
+                    <p className="font-bold text-amber-900 dark:text-amber-200 mb-1 border-b border-amber-200 dark:border-amber-800/50 pb-1">Scoring Criteria:</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                      <li><strong>Water-in Rule:</strong> Ideal to have 0.1" - 0.5" rain within 48h to wash nutrients into soil.</li>
+                      <li><strong>Washout Risk:</strong> Penalized if &gt; 1.0" rain within 48h.</li>
+                      <li><strong>Burn Risk:</strong> Penalized if high temp &gt; 85°F (nitrogen burn).</li>
+                      <li><strong>Dormant:</strong> Penalized if high temp &lt; 50°F (grass won't absorb).</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {bestFertilizerDays.length > 0 ? (
+                  <div className="space-y-2">
+                    {bestFertilizerDays.map((day, idx) => (
+                      <div key={idx} className="bg-white dark:bg-amber-900/20 rounded-xl p-3 border border-amber-200/60 dark:border-amber-800/40 shadow-sm flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${idx === 0 ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'}`}>
+                            #{idx + 1}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-amber-950 dark:text-amber-100">{day.dayName}</h3>
+                            <p className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/70 uppercase tracking-wide">
+                              {day.tip}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col justify-center items-end">
+                          <span className="text-base font-black text-amber-800 dark:text-amber-200 leading-none">{Math.round(day.maxTemp)}°</span>
+                          <span className="text-[9px] font-bold text-amber-500 dark:text-amber-400 uppercase mt-0.5">High</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white/50 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-100 dark:border-amber-900/30 text-center text-sm font-medium text-amber-800/70 dark:text-amber-400/70">
+                    No ideal fertilizing days in the next week.
                   </div>
                 )}
               </div>
