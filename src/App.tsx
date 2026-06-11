@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings, Sprout } from 'lucide-react';
+import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings, Sprout, Fan, Info } from 'lucide-react';
 
 const defaultPrefs = {
   minTemp: 60,
@@ -91,6 +91,7 @@ export default function App() {
   const [dateOffset, setDateOffset] = useState(0); // 0 = Today, -1 = Yesterday, 1 = Tomorrow...
   const [showMowInfo, setShowMowInfo] = useState(false);
   const [showFertilizerInfo, setShowFertilizerInfo] = useState(false);
+  const [showDataInfo, setShowDataInfo] = useState(false);
   const [coords, setCoords] = useState({ lat: 41.8781, lon: -87.6298 });
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -137,11 +138,17 @@ export default function App() {
     try {
       // Expanded API call: past_days=7, forecast_days=7 (14 days total).
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=precipitation,uv_index,temperature_2m&daily=uv_index_max,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weathercode&hourly=precipitation,uv_index,temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m&past_days=7&forecast_days=7&timezone=auto&precipitation_unit=inch&temperature_unit=fahrenheit&wind_speed_unit=mph`;
-      const res = await fetch(url);
+      const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=us_aqi&past_days=7&forecast_days=7&timezone=auto`;
+      
+      const [res, aqiRes] = await Promise.all([fetch(url), fetch(aqiUrl)]);
       
       if (!res.ok) throw new Error('Failed to fetch weather data');
       
       const data = await res.json();
+      let aqiData = null;
+      if (aqiRes.ok) {
+        aqiData = await aqiRes.json();
+      }
       
       // Calculate current hour index to do rolling 24h math for "Today"
       const nowTime = new Date().getTime();
@@ -156,6 +163,24 @@ export default function App() {
              currentHourIdx = i;
          }
       });
+
+      if (aqiData && aqiData.hourly && aqiData.hourly.us_aqi) {
+        data.hourly.us_aqi = aqiData.hourly.us_aqi;
+        
+        const dailyMaxAqi = [];
+        data.daily.time.forEach(dateStr => {
+           let maxAqi = 0;
+           data.hourly.time.forEach((t, i) => {
+              if (t.startsWith(dateStr)) {
+                 const aqi = data.hourly.us_aqi[i];
+                 if (aqi > maxAqi) maxAqi = aqi;
+              }
+           });
+           dailyMaxAqi.push(maxAqi);
+        });
+        data.daily.us_aqi_max = dailyMaxAqi;
+        data.current.us_aqi = data.hourly.us_aqi[currentHourIdx];
+      }
 
       const rainPast24 = data.hourly.precipitation.slice(Math.max(0, currentHourIdx - 24), currentHourIdx).reduce((a, b) => a + (b || 0), 0);
       const rainNext12 = data.hourly.precipitation.slice(currentHourIdx, currentHourIdx + 12).reduce((a, b) => a + (b || 0), 0);
@@ -242,6 +267,16 @@ export default function App() {
     return { text: "Extreme", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-900/40" };
   };
 
+  const getAqiSeverity = (aqi) => {
+    if (!aqi) return { text: "Unknown", color: "text-slate-600 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-900/40" };
+    if (aqi <= 50) return { text: "Good", color: "text-green-600 dark:text-green-400", bg: "bg-green-100 dark:bg-green-900/40" };
+    if (aqi <= 100) return { text: "Moderate", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-100 dark:bg-yellow-900/40" };
+    if (aqi <= 150) return { text: "Sensitive", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/40" };
+    if (aqi <= 200) return { text: "Unhealthy", color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/40" };
+    if (aqi <= 300) return { text: "Very Unhealthy", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-900/40" };
+    return { text: "Hazardous", color: "text-rose-900 dark:text-rose-400", bg: "bg-rose-100 dark:bg-rose-900/40" };
+  };
+
   // --- Rendering Logic based on dateOffset ---
   const isToday = dateOffset === 0;
   // API returns past_days=7, meaning index 0 is 7 days ago, index 7 is Today.
@@ -285,7 +320,8 @@ export default function App() {
                   precipProb: rawHourly.precipitation_probability[i] || 0,
                   precipAmount: Number(rawHourly.precipitation[i] || 0),
                   humidity: rawHourly.relative_humidity_2m[i] || 0,
-                  windSpeed: Math.round(rawHourly.wind_speed_10m[i] || 0)
+                  windSpeed: Math.round(rawHourly.wind_speed_10m[i] || 0),
+                  aqi: rawHourly.us_aqi ? rawHourly.us_aqi[i] : null
               });
           }
       }
@@ -505,7 +541,7 @@ export default function App() {
             <div className="space-y-6">
               
               {/* Daily / Current Summary Grid */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {/* Temp Box */}
                 <div className="bg-orange-50 dark:bg-orange-950/30 rounded-2xl p-4 flex flex-col items-center justify-center border border-orange-100 dark:border-orange-900/30 text-center shadow-sm">
                   <Thermometer className="w-5 h-5 text-orange-500 dark:text-orange-400 mb-1" />
@@ -551,9 +587,25 @@ export default function App() {
                     {getUvSeverity(isToday ? weather.raw.current.uv_index : weather.raw.daily.uv_index_max[dailyIndex]).text}
                   </span>
                   <span className="text-[10px] font-bold text-amber-700/60 dark:text-amber-400/60 uppercase mt-0.5">
-                    Peak: {weather.raw.daily.uv_index_max[dailyIndex]}
+                    UV Peak: {weather.raw.daily.uv_index_max[dailyIndex]}
                   </span>
                 </div>
+
+                {/* AQI Box */}
+                {weather.raw.current.us_aqi !== undefined && (
+                  <div className="bg-purple-50 dark:bg-purple-950/30 rounded-2xl p-4 flex flex-col items-center justify-center border border-purple-100 dark:border-purple-900/30 text-center shadow-sm">
+                    <Fan className="w-5 h-5 text-purple-500 dark:text-purple-400 mb-1" />
+                    <span className="text-2xl font-black text-purple-900 dark:text-purple-100 tracking-tighter">
+                      {isToday ? weather.raw.current.us_aqi : weather.raw.daily.us_aqi_max[dailyIndex]}
+                    </span>
+                    <span className={`text-[10px] font-bold uppercase mt-1 ${getAqiSeverity(isToday ? weather.raw.current.us_aqi : weather.raw.daily.us_aqi_max[dailyIndex]).color}`}>
+                      {getAqiSeverity(isToday ? weather.raw.current.us_aqi : weather.raw.daily.us_aqi_max[dailyIndex]).text}
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-700/60 dark:text-purple-400/60 uppercase mt-0.5">
+                      Max AQI: {weather.raw.daily.us_aqi_max[dailyIndex]}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Unified 12-Hour Timeline */}
@@ -573,6 +625,11 @@ export default function App() {
                       <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getUvSeverity(item.uv).bg} ${getUvSeverity(item.uv).color}`}>
                         UV {item.uv}
                       </div>
+                      {item.aqi !== null && (
+                        <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getAqiSeverity(item.aqi).bg} ${getAqiSeverity(item.aqi).color}`}>
+                          AQI {item.aqi}
+                        </div>
+                      )}
                       <span className={`text-[10px] font-bold mt-1 ${item.precipAmount > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-300 dark:text-slate-600'}`}>
                         {item.precipAmount > 0 ? item.precipAmount.toFixed(2) : '0'}"
                       </span>
@@ -864,16 +921,33 @@ export default function App() {
       </div>
 
       {/* Sources Footer */}
-      <div className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500">
+      <div className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500 max-w-md mx-auto w-full px-4">
         <p>
           Data powered by{' '}
           <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="font-medium hover:text-slate-600 transition-colors underline decoration-slate-300 underline-offset-2">
             Open-Meteo
           </a>
         </p>
-        <p className="mt-1 opacity-75">
-          Underlying models by NWS, NOAA & ECMWF
-        </p>
+        <button 
+          onClick={() => setShowDataInfo(!showDataInfo)}
+          className="mt-3 flex items-center justify-center gap-1.5 mx-auto bg-slate-200/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 py-1.5 px-4 rounded-full transition-all focus:outline-none font-medium text-[11px]"
+        >
+          <Info className="w-3.5 h-3.5" />
+          <span>Where is this data coming from?</span>
+          {showDataInfo ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+        </button>
+        
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showDataInfo ? 'max-h-96 opacity-100 mt-3 pb-8' : 'max-h-0 opacity-0 pb-0'}`}>
+          <div className="bg-slate-200/50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-300/50 dark:border-slate-800 text-left space-y-3 shadow-inner">
+            <p className="leading-relaxed"><strong>Open-Meteo</strong> is an open-source weather API that aggregates state-of-the-art models from national weather services globally without tracking or advertising.</p>
+            <ul className="list-disc pl-4 space-y-1.5 text-slate-600 dark:text-slate-400">
+              <li><strong>Weather:</strong> Forecasted using high-resolution models like the NWS HRRR (USA) and ECMWF (Global).</li>
+              <li><strong>Air Quality:</strong> Sourced from the US EPA and global networks, tracking real-time pollutants.</li>
+              <li><strong>UV Index:</strong> Provided by Copernicus ECMWF, tracking solar radiation intensity.</li>
+              <li><strong>Live Radar:</strong> Embedded from Windy.com, showing real-time doppler radar feeds.</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
