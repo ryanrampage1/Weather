@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings, Sprout, Fan, Info } from 'lucide-react';
+import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings, Sprout, Fan, Info, Car } from 'lucide-react';
+import TravelCalculator from './components/TravelCalculator';
 
 const defaultPrefs = {
   minTemp: 60,
@@ -84,6 +85,7 @@ const DualSlider = ({ min, max, minValue, maxValue, onChangeMin, onChangeMax }) 
 };
 
 export default function App() {
+  const [currentPage, setCurrentPage] = useState('home');
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -444,6 +446,10 @@ export default function App() {
     bestMowingDays = bestMowingDays.slice(0, 3);
   }
 
+  if (currentPage === 'travel') {
+    return <TravelCalculator onBack={() => setCurrentPage('home')} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -479,6 +485,13 @@ export default function App() {
                 title="Use my location"
               >
                 <MapPin className="w-4 h-4 text-white" />
+              </button>
+              <button 
+                onClick={() => setCurrentPage('travel')}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                title="Travel Calculator"
+              >
+                <Car className="w-4 h-4 text-white" />
               </button>
             </div>
           </div>
