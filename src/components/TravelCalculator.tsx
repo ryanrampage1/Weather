@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Car, MapPin, Loader2, AlertCircle, CloudRain, Sun, Wind, Cloud, Map } from 'lucide-react';
+import TravelMap from './TravelMap';
 
 export default function TravelCalculator({ onBack }) {
   const [startLoc, setStartLoc] = useState('');
@@ -9,6 +10,10 @@ export default function TravelCalculator({ onBack }) {
   
   const [routeInfo, setRouteInfo] = useState(null);
   const [windows, setWindows] = useState([]);
+  const [routeCoords, setRouteCoords] = useState(null);
+  const [sampledPoints, setSampledPoints] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [showMap, setShowMap] = useState(false);
 
   const geocode = async (query) => {
     const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
@@ -70,16 +75,19 @@ export default function TravelCalculator({ onBack }) {
       const lats = sampledCoords.map(c => c[1]).join(',');
       const lons = sampledCoords.map(c => c[0]).join(',');
       
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=temperature_2m,precipitation,weathercode,wind_speed_10m&forecast_days=2&timezone=auto`;
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=temperature_2m,precipitation,weathercode,wind_speed_10m&forecast_days=2&timezone=auto&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph`;
       const weatherRes = await fetch(weatherUrl);
       if (!weatherRes.ok) throw new Error('Failed to fetch weather data for the route.');
       
       // Open-Meteo returns an array if multiple locations are requested, or a single object if only 1 location.
-      // Wait, if numPoints > 1, it's an array.
-      let weatherData = await weatherRes.json();
-      if (!Array.isArray(weatherData)) {
-         weatherData = [weatherData];
+      let fetchedWeatherData = await weatherRes.json();
+      if (!Array.isArray(fetchedWeatherData)) {
+         fetchedWeatherData = [fetchedWeatherData];
       }
+
+      setRouteCoords(coords);
+      setSampledPoints(sampledCoords);
+      setWeatherData(fetchedWeatherData);
 
       // 5. Analyze Hourly Travel Windows
       const now = new Date();
@@ -101,7 +109,7 @@ export default function TravelCalculator({ onBack }) {
           
           // Find corresponding hour index in weatherData[p]
           // Open-Meteo hourly.time is like "2023-08-01T14:00"
-          const pointWeather = weatherData[p];
+          const pointWeather = fetchedWeatherData[p];
           if (!pointWeather || !pointWeather.hourly) continue;
           
           let closestIdx = 0;
@@ -164,7 +172,7 @@ export default function TravelCalculator({ onBack }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col h-[850px] max-h-[90vh]">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col h-[850px] max-h-[90vh] relative">
         
         {/* Header Block */}
         <div className="bg-slate-900 dark:bg-slate-950 text-white px-5 py-4 border-b border-transparent dark:border-slate-800 shrink-0">
@@ -248,6 +256,13 @@ export default function TravelCalculator({ onBack }) {
               <p className="text-[10px] text-center mt-3 text-indigo-400 dark:text-indigo-500 font-medium">
                 Checking weather at {routeInfo.pointsCount} points along the route (~every 45 mins).
               </p>
+              <button 
+                onClick={() => setShowMap(true)}
+                className="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Map className="w-4 h-4" />
+                View Interactive Map
+              </button>
             </div>
           )}
 
@@ -282,6 +297,15 @@ export default function TravelCalculator({ onBack }) {
             </div>
           )}
         </div>
+        {showMap && routeCoords && sampledPoints && weatherData && (
+          <TravelMap 
+            routeCoords={routeCoords}
+            sampledPoints={sampledPoints}
+            weatherData={weatherData}
+            durationMins={routeInfo.durationMins}
+            onClose={() => setShowMap(false)}
+          />
+        )}
       </div>
     </div>
   );
