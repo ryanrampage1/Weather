@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Car, MapPin, Loader2, AlertCircle, CloudRain, Sun, Wind, Cloud, Map } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Car, MapPin, Loader2, AlertCircle, CloudRain, Sun, Wind, Cloud, Map, Share2, Check } from 'lucide-react';
 import TravelMap from './TravelMap';
 
 export default function TravelCalculator({ onBack }) {
@@ -14,29 +14,30 @@ export default function TravelCalculator({ onBack }) {
   const [sampledPoints, setSampledPoints] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [showMap, setShowMap] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const geocode = async (query) => {
-    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
-    if (!res.ok) throw new Error(`Geocoding failed for ${query}`);
-    const data = await res.json();
-    if (!data.results || data.results.length === 0) throw new Error(`Could not find location: ${query}`);
-    return data.results[0];
-  };
-
-  const calculateRoute = async () => {
-    if (!startLoc || !endLoc) return;
+  const calculateRoute = async (start = startLoc, end = endLoc) => {
+    if (!start || !end) return;
     setLoading(true);
     setError(null);
     setRouteInfo(null);
     setWindows([]);
 
     try {
+      const geocode = async (query) => {
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+        if (!res.ok) throw new Error(`Geocoding failed for ${query}`);
+        const data = await res.json();
+        if (!data.results || data.results.length === 0) throw new Error(`Could not find location: ${query}`);
+        return data.results[0];
+      };
+
       // 1. Geocode Start and End
-      const start = await geocode(startLoc);
-      const end = await geocode(endLoc);
+      const startObj = await geocode(start);
+      const endObj = await geocode(end);
 
       // 2. Fetch Route from OSRM
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson`;
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startObj.longitude},${startObj.latitude};${endObj.longitude},${endObj.latitude}?overview=full&geometries=geojson`;
       const osrmRes = await fetch(osrmUrl);
       if (!osrmRes.ok) throw new Error('Failed to fetch route. Make sure locations are reachable by car.');
       const osrmData = await osrmRes.json();
@@ -64,8 +65,8 @@ export default function TravelCalculator({ onBack }) {
       }
 
       setRouteInfo({
-        startName: `${start.name}, ${start.admin1 || ''}`,
-        endName: `${end.name}, ${end.admin1 || ''}`,
+        startName: `${startObj.name}, ${startObj.admin1 || ''}`,
+        endName: `${endObj.name}, ${endObj.admin1 || ''}`,
         durationMins: Math.round(durationSeconds / 60),
         distanceMiles: Math.round(distanceMiles),
         pointsCount: sampledCoords.length
@@ -158,6 +159,19 @@ export default function TravelCalculator({ onBack }) {
     }
   };
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get('start');
+    const endParam = urlParams.get('end');
+    
+    if (startParam) setStartLoc(startParam);
+    if (endParam) setEndLoc(endParam);
+    
+    if (startParam && endParam) {
+      calculateRoute(startParam, endParam);
+    }
+  }, []);
+
   const getStatusColor = (status) => {
     if (status === 'ideal') return 'bg-emerald-100 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-300';
     if (status === 'warning') return 'bg-yellow-100 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800/50 dark:text-yellow-300';
@@ -170,24 +184,41 @@ export default function TravelCalculator({ onBack }) {
     return <CloudRain className="w-5 h-5 text-rose-500" />;
   };
 
+  const handleShare = () => {
+    const url = `${window.location.origin}${window.location.pathname}?page=travel&start=${encodeURIComponent(startLoc)}&end=${encodeURIComponent(endLoc)}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col h-[850px] max-h-[90vh] relative">
         
         {/* Header Block */}
         <div className="bg-slate-900 dark:bg-slate-950 text-white px-5 py-4 border-b border-transparent dark:border-slate-800 shrink-0">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={onBack}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-              title="Back to Home"
-            >
-              <ArrowLeft className="w-4 h-4 text-white" />
-            </button>
-            <div className="flex items-center gap-2">
-              <Car className="w-5 h-5 text-blue-400" />
-              <h1 className="text-base font-bold tracking-tight">Travel Calculator</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={onBack}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                title="Back to Home"
+              >
+                <ArrowLeft className="w-4 h-4 text-white" />
+              </button>
+              <div className="flex items-center gap-2">
+                <Car className="w-5 h-5 text-blue-400" />
+                <h1 className="text-base font-bold tracking-tight">Travel Calculator</h1>
+              </div>
             </div>
+            <button 
+              onClick={handleShare}
+              disabled={!startLoc || !endLoc}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50"
+              title="Share Route"
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-white" />}
+            </button>
           </div>
         </div>
 
@@ -223,7 +254,7 @@ export default function TravelCalculator({ onBack }) {
             </div>
 
             <button 
-              onClick={calculateRoute}
+              onClick={() => calculateRoute()}
               disabled={loading || !startLoc || !endLoc}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings, Sprout, Fan, Info, Car } from 'lucide-react';
+import { CloudRain, Sun, Moon, MapPin, Loader2, AlertCircle, RefreshCw, Thermometer, Droplets, Smile, ChevronLeft, ChevronRight, Leaf, ChevronDown, ChevronUp, Radar, Settings, Sprout, Fan, Info, Car, Share2, Check } from 'lucide-react';
 import TravelCalculator from './components/TravelCalculator';
 
 const defaultPrefs = {
@@ -103,6 +103,7 @@ export default function App() {
     }
     return false;
   });
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isDark) {
@@ -206,6 +207,21 @@ export default function App() {
   useEffect(() => {
     const initWeather = async () => {
       const urlParams = new URLSearchParams(window.location.search);
+      
+      const page = urlParams.get('page');
+      if (page === 'travel') {
+        setCurrentPage('travel');
+      }
+
+      const latParam = urlParams.get('lat');
+      const lonParam = urlParams.get('lon');
+      const nameParam = urlParams.get('name');
+      
+      if (latParam && lonParam) {
+        fetchWeather(Number(latParam), Number(lonParam), nameParam || "Shared Location");
+        return;
+      }
+
       let zip = urlParams.get('zip');
       
       if (!zip) {
@@ -277,6 +293,13 @@ export default function App() {
     if (aqi <= 200) return { text: "Unhealthy", color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/40" };
     if (aqi <= 300) return { text: "Very Unhealthy", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-900/40" };
     return { text: "Hazardous", color: "text-rose-900 dark:text-rose-400", bg: "bg-rose-100 dark:bg-rose-900/40" };
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}${window.location.pathname}?lat=${coords.lat}&lon=${coords.lon}&name=${encodeURIComponent(locationName)}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // --- Rendering Logic based on dateOffset ---
@@ -469,6 +492,13 @@ export default function App() {
                 title="Toggle Dark Mode"
               >
                 {isDark ? <Sun className="w-4 h-4 text-white" /> : <Moon className="w-4 h-4 text-white" />}
+              </button>
+              <button 
+                onClick={handleShare}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                title="Share Location"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-white" />}
               </button>
               <button 
                 onClick={() => fetchWeather(defaultLat, defaultLon, locationName)}
